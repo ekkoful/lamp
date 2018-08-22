@@ -1,0 +1,102 @@
+#!/bin/bash
+#
+# httpd        Startup script for the Apache HTTP Server
+#
+# chkconfig: - 85 15
+# description: Apache is a World Wide Web server.  It is used to serve \
+#        HTML files and CGI.
+# processname: httpd
+# config: /etc/httpd/conf/httpd.conf
+# config: /etc/sysconfig/httpd
+# pidfile: /var/run/httpd.pid
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+if [ -f /etc/sysconfig/httpd ]; then
+        . /etc/sysconfig/httpd
+fi
+
+# Start httpd in the C locale by default.
+HTTPD_LANG=${HTTPD_LANG-"C"}
+
+# This will prevent initlog from swallowing up a pass-phrase prompt if
+# mod_ssl needs a pass-phrase from the user.
+INITLOG_ARGS=""
+
+# Set HTTPD=/usr/sbin/httpd.worker in /etc/sysconfig/httpd to use a server
+# with the thread-based "worker" MPM; BE WARNED that some modules may not
+# work correctly with a thread-based MPM; notably PHP will refuse to start.
+
+# Path to the apachectl script, server binary, and short-form for messages.
+apachectl=/usr/local/httpd24/bin/apachectl
+httpd24=${HTTPD-/usr/local/httpd24/bin/httpd}
+prog=httpd24
+pidfile=${PIDFILE-/var/run/httpd.pid}
+lockfile=${LOCKFILE-/var/lock/subsys/httpd}
+RETVAL=0
+
+start() {
+        echo -n $"Starting $prog: "
+        LANG=$HTTPD_LANG daemon --pidfile=${pidfile} $httpd24 $OPTIONS
+        RETVAL=$?
+        echo
+        [ $RETVAL = 0 ] && touch ${lockfile}
+        return $RETVAL
+}
+
+stop() {
+  echo -n $"Stopping $prog: "
+  killproc -p ${pidfile} -d 10 $httpd24
+  RETVAL=$?
+  echo
+  [ $RETVAL = 0 ] && rm -f ${lockfile} ${pidfile}
+}
+reload() {
+    echo -n $"Reloading $prog: "
+    if ! LANG=$HTTPD_LANG $httpd24 $OPTIONS -t >&/dev/null; then
+        RETVAL=$?
+        echo $"not reloading due to configuration syntax error"
+        failure $"not reloading $httpd24 due to configuration syntax error"
+    else
+        killproc -p ${pidfile} $httpd24 -HUP
+        RETVAL=$?
+    fi
+    echo
+}
+
+# See how we were called.
+case "$1" in
+  start)
+  start
+  ;;
+  stop)
+  stop
+  ;;
+  status)
+        status -p ${pidfile} $httpd24
+  RETVAL=$?
+  ;;
+  restart)
+  stop
+  start
+  ;;
+  condrestart)
+  if [ -f ${pidfile} ] ; then
+    stop
+    start
+  fi
+  ;;
+  reload)
+        reload
+  ;;
+  graceful|help|configtest|fullstatus)
+  $apachectl $@
+  RETVAL=$?
+  ;;
+  *)
+  echo $"Usage: $prog {start|stop|restart|condrestart|reload|status|fullstatus|graceful|help|configtest}"
+  exit 1
+esac
+
+exit $RETVAL
