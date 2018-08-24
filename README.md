@@ -39,7 +39,7 @@
 5. /conf        #LAMP中各个配置文件
 
 ## 使用方法
-```
+```bash
    cd
    git clone https://github.com/Beechoing/lampauto.git
    cd lampauto
